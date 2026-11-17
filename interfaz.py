@@ -23,19 +23,16 @@ import threading
 import tkinter as tk
 from tkinter import filedialog, ttk
 from typing import Dict, List, Optional
+from visualizacion import (MapaCanvas, COLOR_AGENTE, COLOR_VIVA, 
+                           COLOR_RESCATADA, COLOR_MUERTA, COLOR_PARED) 
 
 from algoritmos import ALGORITMOS, LIMITE_TIEMPO_SEGUNDOS, Resultado, ejecutar
-from modelo import (ErrorDeArchivo, Estado, Mapa, ProblemaRescate, Victima,
-                    cargar_victimas, validar_victimas)
+from modelo import ErrorDeArchivo, Estado, Mapa, ProblemaRescate, Victima
+from lectura import cargar_mapa, cargar_victimas, validar_victimas
+from estadisticas import construir_texto
 
 # Colores de la visualizacion
-COLOR_PARED = "#37474f"
-COLOR_LIBRE = "#ffffff"
-COLOR_RASTRO = "#d6e9fb"      # celdas ya recorridas por el agente
-COLOR_AGENTE = "#1565c0"
-COLOR_VIVA = "#ffc107"
-COLOR_RESCATADA = "#43a047"
-COLOR_MUERTA = "#e53935"
+
 COLOR_OK = "#2e7d32"
 COLOR_ERROR = "#c62828"
 COLOR_AVISO = "#ef6c00"
@@ -110,6 +107,7 @@ class Aplicacion(tk.Tk):
         self._rastro: set = set()
 
         self._crear_widgets()
+        self._lienzo = MapaCanvas(self.canvas) 
         self._refrescar_estadisticas()
 
     # ======================================================================
@@ -179,7 +177,7 @@ class Aplicacion(tk.Tk):
     # ======================================================================
     def _al_elegir_mapa(self, ruta: str) -> None:
         try:
-            self.mapa = Mapa.desde_archivo(ruta)
+            self.mapa = cargar_mapa(ruta)
             self.sel_mapa.marcar(f"OK: lectura correcta ({self.mapa.filas}x{self.mapa.columnas})",
                                  COLOR_OK)
         except ErrorDeArchivo as exc:
@@ -330,112 +328,22 @@ class Aplicacion(tk.Tk):
     # Dibujo del mapa
     # ======================================================================
     def _redibujar(self) -> None:
-        """Dibuja la cuadricula completa para el estado actual."""
-        c = self.canvas
-        c.delete("all")
-        if self.mapa is None:
-            c.create_text(c.winfo_width() // 2, c.winfo_height() // 2,
-                          text="Cargue mapa.txt para ver el entorno", fill="gray")
-            return
-        mapa = self.mapa
-        ancho, alto = max(c.winfo_width(), 50), max(c.winfo_height(), 50)
-        lado = max(12, min(64, (ancho - 10) // mapa.columnas, (alto - 10) // mapa.filas))
-        x0 = (ancho - lado * mapa.columnas) // 2
-        y0 = (alto - lado * mapa.filas) // 2
+        """ delega el dibujo al modulo visualizacion.py"""
 
-        # Celdas del mapa
-        for f in range(mapa.filas):
-            for col in range(mapa.columnas):
-                if not mapa.es_libre(f, col):
-                    color = COLOR_PARED
-                elif (f, col) in self._rastro:
-                    color = COLOR_RASTRO
-                else:
-                    color = COLOR_LIBRE
-                x, y = x0 + col * lado, y0 + f * lado
-                c.create_rectangle(x, y, x + lado, y + lado, fill=color, outline="#b0bec5")
-        # Marca de inicio
-        fi, ci = mapa.inicio
-        c.create_text(x0 + ci * lado + lado * 0.15, y0 + fi * lado + lado * 0.2, text="S",
-                      fill="#607d8b", font=("Segoe UI", max(7, lado // 5), "bold"))
-
-        estado = self._estado_actual
-        if estado is None:
-            return
-        fuente = ("Segoe UI", max(7, lado // 4), "bold")
-
-        # Victimas
-        for i, v in enumerate(self.victimas_leidas or []):
-            if not mapa.en_rango(v.fila, v.columna):
-                continue
-            x, y = x0 + v.columna * lado, y0 + v.fila * lado
-            marca = "*" if v.critica else ""
-            if i in estado.rescatadas:
-                color, texto = COLOR_RESCATADA, f"{v.id}{marca}"
-            elif i in estado.vivas and not self._es_final:
-                color, texto = COLOR_VIVA, f"{v.id}{marca}\n{v.ticks - estado.tick}"
-            else:
-                # Muerta (o condenada en el ultimo cuadro: ya no es alcanzable).
-                color, texto = COLOR_MUERTA, f"{v.id}{marca}"
-            c.create_rectangle(x + 2, y + 2, x + lado - 2, y + lado - 2, fill=color, outline="")
-            c.create_text(x + lado / 2, y + lado / 2, text=texto, font=fuente,
-                          fill="white" if color != COLOR_VIVA else "black")
-
-        # Agente: circulo azul (aro si esta sobre una victima para no taparla)
-        x, y = x0 + estado.columna * lado, y0 + estado.fila * lado
-        pad = lado * 0.18
-        sobre_victima = any(v.fila == estado.fila and v.columna == estado.columna
-                            for v in (self.victimas_leidas or []))
-        if sobre_victima:
-            c.create_oval(x + pad / 2, y + pad / 2, x + lado - pad / 2, y + lado - pad / 2,
-                          outline=COLOR_AGENTE, width=3)
-        else:
-            c.create_oval(x + pad, y + pad, x + lado - pad, y + lado - pad, fill=COLOR_AGENTE,
-                          outline="")
-            c.create_text(x + lado / 2, y + lado / 2, text="A", fill="white", font=fuente)
+        self._lienzo.dibujar(self.mapa, self.victimas_leidas, self._estado_actual, self._es_final, self._rastro)
 
     # ======================================================================
     # Panel de estadisticas
     # ======================================================================
-    @staticmethod
-    def _fila(texto: str = "") -> str:
-        """Linea de una caja: '| texto ... |' con ancho fijo."""
-        return "| " + texto.ljust(ANCHO_CAJA - 2)[:ANCHO_CAJA - 2] + " |"
+
 
     def _refrescar_estadisticas(self) -> None:
         """Reconstruye el texto de 'RESULTADO DE LA SIMULACION' y 'COMPARACION'."""
-        borde = "+" + "-" * ANCHO_CAJA + "+"
-        fila = self._fila
-        lineas = [borde, fila("RESULTADO DE LA SIMULACION")]
-        res = self._resultado_sim
-        if res is not None and self._simulacion_terminada:
-            lineas += [fila(f"Victimas totales   : {res.total}"),
-                       fila(f"Victimas rescatadas: {res.rescatadas}"),
-                       fila(f"Victimas fallecidas: {res.fallecidas}"),
-                       fila(f"Ticks totales      : {res.ticks}")]
-            if res.tiempo_agotado:
-                lineas.append(fila(f"AVISO: limite de {LIMITE_TIEMPO_SEGUNDOS:.0f} s alcanzado"))
-        else:
-            lineas.append(fila("(disponible al finalizar la simulacion)"))
-        lineas += [borde, fila("COMPARACION DE ALGORITMOS"),
-                   fila(f"{'Algoritmo':<9} | {'Nodos':>7} | {'Tiempo':>8} | {'Rescatadas':>10} | {'Fallecidas':>10}")]
-        hubo_limite = False
-        for nombre in ALGORITMOS:
-            r = self.comparacion.get(nombre)
-            if r is None:
-                continue
-            marca = "*" if r.tiempo_agotado else ""
-            hubo_limite = hubo_limite or r.tiempo_agotado
-            tiempo = f"{r.tiempo:.2f}s{marca}"
-            lineas.append(fila(f"{nombre:<9} | {r.nodos_expandidos:>7} | {tiempo:>8} | "
-                               f"{r.rescatadas:>10} | {r.fallecidas:>10}"))
-        if not self.comparacion:
-            lineas.append(fila("(aun no hay ejecuciones)"))
-        if hubo_limite:
-            lineas.append(fila("* = limite de tiempo alcanzado (resultado parcial)"))
-        lineas.append(borde)
+        texto = construir_texto(self._resultado_sim,
+                                self._simulacion_terminada,
+                                self.comparacion) 
 
         self.texto_est.config(state="normal")
         self.texto_est.delete("1.0", "end")
-        self.texto_est.insert("1.0", "\n".join(lineas))
+        self.texto_est.insert("1.0", texto)
         self.texto_est.config(state="disabled")

@@ -1,36 +1,30 @@
+ # -*- coding: utf-8 -*-
+
 """
-Heurísticas para A*.
-h1: número de víctimas condenadas (admissible, propuesta en el enunciado).
-h2: heurística más informada = max(h1, muertes forzadas por tiempo acotado).
+heuristica.py
+=============
+Contiene la función de estimación (heurística) utilizada por A*.
+Se ha separado del modelo para facilitar su estudio y sustentación.
 """
-from collections import deque
 
-
-def manhattan(a, b):
-    return abs(a[0] - b[0]) + abs(a[1] - b[1])
-
-
-def h_doomed(state, rmap):
+def calcular_heuristica(estado, problema, meta):
     """
-    Cuenta víctimas que YA no pueden salvarse:
-        dist_manhattan(agente, v) > ticks_restantes(v)
-    Admisible: ninguna estrategia puede salvarlas porque el agente
-    necesita al menos esa distancia y el tiempo ya no alcanza.
+    h(n) admisible (ver demostracion en el docstring del modulo): cuenta las
+    victimas vivas condenadas por distancia Manhattan > ticks restantes.
     """
-    doomed = 0
-    for vid in state.alive:
-        v = rmap.victims[vid]
-        remaining = v.survival_ticks - state.tick
-        if manhattan((state.row, state.col), (v.row, v.col)) > remaining:
-            doomed += 1
-    return doomed
+    if meta:
+        return (0, 0, 0)
+    
+    condenadas = 0
+    criticas = 0
 
+    for i in estado.vivas:
+        v = problema.victimas[i]
+        distancia = abs(estado.fila - v.fila) + abs(estado.columna - v.columna)
+        ticks_restantes = v.ticks - estado.tick
 
-def h_combined(state, rmap):
-    """
-    Heurística más informada: añade 0.5 * rescates no garantizados
-    que quedan (estimación optimista de lo que SÍ se puede hacer).
-    Sigue siendo admisible porque solo subestima el costo restante
-    (aquí no hay costo, sino utilidad).
-    """
-    return h_doomed(state, rmap)
+        if distancia > ticks_restantes:
+            condenadas += 1
+            if v.critica:
+                criticas += 1
+    return (condenadas, criticas, 0)
