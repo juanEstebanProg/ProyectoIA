@@ -1,8 +1,6 @@
-# -*- coding: utf-8 -*-
 """
 algoritmos.py
 =============
-Implementacion DESDE CERO (solo biblioteca estandar) de:
     * BFS   -> Busqueda en amplitud            (no informada)
     * UCS   -> Busqueda de costo uniforme      (no informada)
     * IDDFS -> Profundidad iterativa           (no informada)
@@ -69,17 +67,21 @@ class Resultado:
 
 # ----------------------------------------------------------------------------
 # Clase base
-# ----------------------------------------------------------------------------
+# --------------------------------------------------------------------------
 class AlgoritmoBusqueda:
-    """Plantilla comun: cronometro, contadores, mejor meta y construccion del resultado."""
+    """Plantilla comun: cronometro, contadores, mejor meta y construccion del resultado.
+    es el padre de los otros algoritmos
+    """
 
     nombre = "BASE"
 
+# aqui se inicializan las variables y se llama a reiniciar
     def __init__(self, problema: ProblemaRescate, limite_tiempo: float = LIMITE_TIEMPO_SEGUNDOS):
         self.problema = problema
         self.limite_tiempo = limite_tiempo
         self._reiniciar()
 
+#lo que hace reiniciar es poner en cero los contadores y las banderas, y reiniciar el tiempo, si no se hiciera esto, al ejecutar un algoritmo y luego otro, los contadores y banderas se mantendrian de la ejecucion anterior
     def _reiniciar(self) -> None:
         self.expandidos = 0
         self.generados = 0
@@ -92,13 +94,15 @@ class AlgoritmoBusqueda:
         self._mejor_clave = None
 
     # -- control de tiempo ----------------------------------------------------
+    # contador monotono>= el limite que pusimos que son 10 segundos
     def _vencido(self) -> bool:
         """True si se agoto el limite de tiempo (y deja constancia en la bandera)."""
-        if time.perf_counter() >= self._limite_absoluto:
-            self.agotado = True
+        if time.perf_counter() >= self._limite_absoluto:   #esta parte es la que dice cuanto paso desde el inicio
+            self.agotado = True                             #esta si se pone en true va a estar asi siempre hasta que se reinicie
         return self.agotado
 
     # -- registro del mejor resultado ----------------------------------------
+    
     def _registrar(self, nodo: Nodo, es_meta: bool) -> None:
         """Guarda la mejor meta (menor g) y, como respaldo, el mejor estado parcial."""
         p = self.problema

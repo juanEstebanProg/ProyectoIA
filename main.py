@@ -1,5 +1,6 @@
 """
-main.py - Punto de entrada.  Ejecutar con:  python main.py
+main.py - Punto de entrada.
+se podria poner lo de aplicacion en este archivo e igual funcionaria
 
 """
 from interfaz import Aplicacion
