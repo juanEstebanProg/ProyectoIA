@@ -17,6 +17,7 @@ def cargar_mapa(ruta: str) -> Mapa:
         with open(ruta, encoding="utf-8-sig") as archivo:
             lineas = [ln.rstrip() for ln in archivo if ln.strip()]
     except OSError as exc:
+        #si el archivo no se puede abrir o no existe, se reporta como ErrorDeArchivo
         raise ErrorDeArchivo(f"No se pudo abrir el mapa: {exc}") from exc
     return Mapa(lineas)          # Mapa valida: rectangular, caracteres, una sola 'S'
 
@@ -34,9 +35,10 @@ def cargar_victimas(ruta: str) -> List[Victima]:
         raise ErrorDeArchivo(f"No se pudo abrir el archivo de victimas: {exc}") from exc
 
     victimas: List[Victima] = []
-    ids = set()
+    ids = set()                                         # para detectar ids repetidos
     for numero, linea in enumerate(lineas, start=1):
         texto = linea.strip()
+        # se ignoran las líneas vacías y comentarios que empiezan con "//"
         if not texto or texto.startswith("//"):
             continue
         partes = [p.strip() for p in texto.split(",")]
@@ -52,9 +54,11 @@ def cargar_victimas(ruta: str) -> List[Victima]:
             raise ErrorDeArchivo(f"Linea {numero}: fila/columna/ticks deben ser enteros.") from exc
         if ticks < 0:
             raise ErrorDeArchivo(f"Linea {numero}: los ticks no pueden ser negativos.")
+        #si se detectan ids repetidos, se lanza ErrorDeArchivo, ya que el id de cada victima debe ser único
         if partes[0] in ids:
             raise ErrorDeArchivo(f"Linea {numero}: id de victima repetido '{partes[0]}'.")
         ids.add(partes[0])
+        #la 5 columna es opcional. Se aceptan varias formas de decir "si"
         critica = len(partes) > 4 and partes[4].lower() in ("1", "si", "sí", "true", "critica", "crítica", "x")
         victimas.append(Victima(partes[0], fila, columna, ticks, critica))
 
