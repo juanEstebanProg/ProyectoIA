@@ -25,14 +25,14 @@
 
 Una zona de desastre se modela como una cuadrícula 2D. Un agente de rescate debe moverse por ella para salvar al mayor número posible de víctimas. Cada víctima tiene un **tiempo de supervivencia** medido en *ticks*, y cada movimiento del agente consume exactamente 1 tick. Como el agente solo avanza una celda por tick y varias víctimas tienen tiempos muy cortos, normalmente **no todas pueden salvarse**.
 
-El objetivo del proyecto es **implementar desde cero y comparar cuatro estrategias de búsqueda**, para encontrar la ruta que maximiza el número de víctimas rescatadas:
+El objetivo del proyecto es **comparar cuatro estrategias de búsqueda**, para encontrar la ruta que maximiza el número de víctimas rescatadas:
 
 | Tipo | Algoritmos |
 |---|---|
 | No informada | Búsqueda en amplitud (**BFS**), Costo uniforme (**UCS**), Profundidad iterativa (**IDDFS**) |
 | Informada | **A\*** con heurística admisible |
 
-El sistema incluye una interfaz gráfica en Tkinter que anima la simulación tick a tick y muestra una tabla comparativa de los algoritmos.
+El sistema incluye una interfaz gráfica que anima la simulación tick a tick y muestra una tabla comparativa de los algoritmos.
 
 ---
 
@@ -40,7 +40,7 @@ El sistema incluye una interfaz gráfica en Tkinter que anima la simulación tic
 
 **Entradas**
 
-- `mapa.txt`: cuadrícula con `#` (pared), `.` (celda libre) y `S` (inicio del agente). También se aceptan `V` y dígitos como marcas de víctima (se tratan como celda libre; la posición real sale de `victimas.txt`).
+- `mapa.txt`: cuadrícula con `#` (pared), `.` (celda libre) y `S` (inicio del agente). la posición real de las victumas sale de `victimas.txt`).
 - `victimas.txt`: una línea por víctima con formato `id,fila,columna,ticks_supervivencia[,critica]`. La quinta columna es opcional y marca víctimas críticas (`1`, `si`, `true`, `critica`, `x`).
 
 **Ejemplo del enunciado**
@@ -62,8 +62,6 @@ El sistema incluye una interfaz gráfica en Tkinter que anima la simulación tic
 | V3 | 5 | 2 | 3 |
 | V4 | 2 | 8 | 20 |
 | V5 | 4 | 5 | 7 |
-
-> Observación: en este ejemplo **V2 está sobre una pared** (fila 3, columna 7 es `#`). El sistema no lo trata como error fatal: emite una advertencia y esa víctima se cuenta como fallecida desde el tick 0 (ver §10.3).
 
 **Reglas del entorno**
 
@@ -207,11 +205,6 @@ El código marca un estado como visitado **al generarlo** (no al expandirlo), lo
 - Al llegar a una meta, `h = 0` y `g` pasa a contar todas las inalcanzables, lo que solo puede aumentar `f`.
 
 Por lo tanto `f` es monótona no decreciente, y A\* con conjunto cerrado devuelve la **primera meta extraída como óptima**.
-
-### 7.4 Informatividad y posibles mejoras
-
-`h` es barata de calcular (O(|vivas|)) pero **débil**: solo detecta víctimas ya perdidas. Versiones más informadas serían usar la distancia real precalculada en lugar de Manhattan (sigue siendo admisible y detecta más condenadas), o añadir un término que considere que dos víctimas lejanas entre sí no pueden salvarse las dos en el tiempo disponible.
-
 ---
 
 ## 8. Algoritmos implementados
@@ -426,17 +419,6 @@ Resultado: **3 rescatadas, 2 fallecidas**, que coincide con el ejemplo del enunc
 **Efecto de las restricciones blandas.** Al meter `muertas_críticas` y `ticks` en `g`, la misma búsqueda produce rutas que salvan primero a las críticas y, a igualdad, la más corta, sin lógica adicional.
 
 **Límite de tiempo.** Sirve de red de seguridad en instancias grandes: si BFS, UCS, IDDFS o A\* no terminan en 10 s, la interfaz muestra el mejor estado parcial hallado, marcado claramente como incompleto.
-
----
-
-## 14. Limitaciones y mejoras futuras
-
-- **Heurística débil.** Solo cuenta víctimas ya condenadas; sirve para podar, pero no guía activamente hacia víctimas salvables. Una versión con distancias reales precalculadas, o una cota basada en cuántas víctimas caben realmente en el tiempo restante, reduciría aún más los nodos expandidos.
-- **Crecimiento exponencial** con el número de víctimas (factor `2ᵏ`): mapas muy grandes dependen del límite de tiempo.
-- **Duplicación de código:** unificar `modelo.py` y los archivos modulares (§10.1).
-- **Dominio:** podrían añadirse costos por terreno, múltiples agentes o víctimas que se muevan.
-
----
 
 ## 15. Conclusiones
 
