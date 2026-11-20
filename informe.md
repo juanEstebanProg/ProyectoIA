@@ -25,8 +25,6 @@
 
 Una zona de desastre se modela como una cuadrícula 2D. Un agente de rescate debe moverse por ella para salvar al mayor número posible de víctimas. Cada víctima tiene un **tiempo de supervivencia** medido en *ticks*, y cada movimiento del agente consume exactamente 1 tick. Como el agente solo avanza una celda por tick y varias víctimas tienen tiempos muy cortos, normalmente **no todas pueden salvarse**.
 
-El objetivo del proyecto es **comparar cuatro estrategias de búsqueda**, para encontrar la ruta que maximiza el número de víctimas rescatadas:
-
 | Tipo | Algoritmos |
 |---|---|
 | No informada | Búsqueda en amplitud (**BFS**), Costo uniforme (**UCS**), Profundidad iterativa (**IDDFS**) |
@@ -420,7 +418,7 @@ Resultado: **3 rescatadas, 2 fallecidas**, que coincide con el ejemplo del enunc
 
 **Límite de tiempo.** Sirve de red de seguridad en instancias grandes: si BFS, UCS, IDDFS o A\* no terminan en 10 s, la interfaz muestra el mejor estado parcial hallado, marcado claramente como incompleto.
 
-## 15. Conclusiones
+## 14. Conclusiones
 
 1. El problema se modeló como una **búsqueda en un espacio de estados finito** con estado explícito, inmutable y hasheable, donde el campo adicional `rescatadas` evita mezclar estados de valor distinto.
 2. La función `g(n) = (muertas, muertas_críticas, ticks)` convierte "maximizar rescates" en un problema de **minimización**, e incorpora las restricciones blandas de forma natural.
